@@ -2,29 +2,9 @@
 #include <list>
 #include <string>
 #include <unordered_set>
-#include <variant>
 #include <cstdlib>
 
-using std::list, std::string;
-
-//struct Type {
-//    char type;
-//    union {
-//        int intValue{};
-//        double doubleValue;
-//        //string stringValue;
-//    };
-//    explicit Type(char t) : type(t) {};
-//    //explicit Value(double v) : type(ValueType::D) { doubleValue = v; }
-//    //explicit Value(string v) : type(ValueType::S) { stringValue = std::move(v); }
-//
-////    ~Type() {
-////        if (type == ValueType::S)
-////            stringValue.~string();
-////    }
-//};
-
-
+using namespace std;
 
 template <typename K, typename V>
 class HashTable {
@@ -129,124 +109,132 @@ public:
         delete[] table;
     }
 };
+//----------------------------------------------------------------------------------------------------------------------
 
-std::variant<int, double, string> DefineType(char type) {
-    switch (type) {
-        case 'I': return 1;
-        case 'D': return .1;
-        default: return "";
+#define switchSecondOper(TypeKey, TypeValue)  \
+    switch (TypeValue) {                \
+        case 'I': {                     \
+            Oper(TypeKey, int)          \
+            break;                      \
+        }                               \
+        case 'D':{                      \
+            Oper(TypeKey, double )      \
+            break;                      \
+        }                               \
+        case 'S':{                      \
+            Oper(TypeKey, string)       \
+            break;                      \
+        }                               \
+        default: exit(1);               \
+            break;                      \
     }
+
+#define switchFirstOper(TypeKey, TypeValue) \
+switch (TypeKey) {                          \
+    case 'I': {                             \
+        switchSecondOper(int, typeValue)    \
+        break;                              \
+    }                                       \
+    case 'D':{                              \
+        switchSecondOper(double, typeValue) \
+        break;                              \
+    }                                       \
+    case 'S':{                              \
+        switchSecondOper(string, typeValue) \
+        break;                              \
+    }                                       \
+    default: exit(1);                       \
 }
-std::variant<int, double, string> ToType(string &str, char type) {
+
+void* convertToType(char type, string &str) {
+    void* answer;
     switch (type) {
-        case 'I': return atoi(str.c_str());
-        case 'D': return atof(str.c_str());
-        default: return str;
+        case 'I': {
+            answer = new int (stoi(str));
+            break;
+        }
+        case 'D': {
+            answer = new double(stod(str));
+            break;
+        }
+        case 'S': {
+            answer = new string(str);
+            break;
+        }
+        default:
+            exit(1);
     }
+    return answer;
 }
+void* getHashTable(char typeKey, char typeValue){
+    #define Oper(TypeKey, TypeValue) answer = new  HashTable<TypeKey,TypeValue>(20);
 
-
-enum class Type {I = 'I',D = 'D',S = 'S'};
-template<Type a>
-struct M{
-
-};
-
-
-int GetVal(M<Type::I> &p) {
-    return 1;
+    void* answer = nullptr;
+    switchFirstOper(typeKey, typeValue)
+    return answer;
+    #undef Oper
 }
-//template<char tmp>
-//int GetVal(M<Type(tmp)> p) {
-//    return 1;
-//}
-//template<typename T>
-//int GetVal(M<Type::T> p) {
-//
-//}
+void AddInTable(void* hashTable, char typeKey, char typeValue, string &key, string &value) {
+#define Oper(TypeKey, TypeValue)                                                         \
+    TypeKey * ptrKey = static_cast<TypeKey *>(convertToType(typeKey, key));                 \
+    TypeValue * ptrValue = static_cast<TypeValue *>(convertToType(typeValue, value));       \
+    static_cast<HashTable<TypeKey,TypeValue>*>(hashTable)->Insert(*ptrKey, *ptrValue);      \
+    delete ptrKey;                                                                          \
+    delete ptrValue;
 
-const Type vvvv() {
-    return Type::I;
+    switchFirstOper(typeKey, typeValue)
+#undef Oper
 }
-template <typename T>
-auto getTypeName(const T& value) {
-    return typeid();
+void remFromTable(void* hashTable, char typeKey, char typeValue, string &key) {
+
+#define Oper(TypeKey, TypeValue)                                                            \
+    TypeKey * ptrKey = static_cast<TypeKey *>(convertToType(typeKey, key));                 \
+    static_cast<HashTable<TypeKey,TypeValue>*>(hashTable)->Remove(*ptrKey);                 \
+    delete ptrKey;                                                                          \
+
+    switchFirstOper(typeKey, typeValue)
+#undef Oper
 }
+int getSize(void* hashTable, char typeKey, char typeValue){
+#define Oper(TypeKey, TypeValue) return static_cast<HashTable<TypeKey, TypeValue>*>(hashTable)->Size();
 
+    switchFirstOper(typeKey, typeValue)
+#undef Oper
+}
+int getCountUniqueValues(void* hashTable, char typeKey, char typeValue){
+#define Oper(TypeKey, TypeValue) return static_cast<HashTable<TypeKey, TypeValue>*>(hashTable)->CountUniqueValues();
 
-int main(){
+    switchFirstOper(typeKey, typeValue)
+#undef Oper
+}
+void freeHash(void* hashTable, char typeKey, char typeValue){
+#define Oper(TypeKey, TypeValue) delete static_cast<HashTable<TypeKey, TypeValue>*>(hashTable);
 
+    switchFirstOper(typeKey, typeValue)
+#undef Oper
+}
+#undef switchFirstOper
+#undef switchSecondOper
+
+int main() {
     char type1_char, type2_char;
     int n;
+    cin >> type1_char >> type2_char >> n;
+    void *hashTable = getHashTable(type1_char, type2_char);
+    for (int i = 0; i < n; i++) {
+        char chose;
+        cin >> chose;
+        string str1, str2;
+        if (chose == 'A') {
+            cin >> str1 >> str2;
+            AddInTable(hashTable, type1_char, type2_char, str1, str2);
+        } else {
+            cin >> str1;
+            remFromTable(hashTable, type1_char, type2_char, str1);
+        }
+    }
+    cout << getSize(hashTable, type1_char, type2_char) << " "
+         << getCountUniqueValues(hashTable, type1_char, type2_char);
+    freeHash(hashTable, type1_char, type2_char);
 
-//    Type a = ;
-
-
-
-    std::cin >> type1_char >> type2_char >> n;
-
-    HashTable<getTypeName(type1_char),type2> hash_table{n*10};
-//    M<(Type)> b;
-//    auto s = GetVal();
-//    Type type1(type1_char), type2(type2_char);
-//    HashTable<type1,type2> hash_table{n*10};
-
-//    for(int i = 0; i < n; i++) {
-//        char chose;
-//        string str1, str2;
-//        std::cin >> chose >> str1;
-//        decltype(DefineType(type1)) value1 = ToType(str1,type1);
-//
-//        if(chose == 'A') {
-//            std::cin >> str2;
-//            decltype(DefineType(type2)) value2 = ToType(str2,type2);
-//            hash_table.Insert(value1, value2);
-//        }
-//        else
-//            hash_table.Remove(value1);
-//        //
-//    }
-//
-//    std::cout << hash_table.Size() << " " << hash_table.CountUniqueValues();
-//    //hash_table.ShowTable();
-//    return 0;
 }
-
-
-
-
-
-//
-//
-//
-//
-//Value getValue(char choice) {
-//    switch (choice) {
-//        case 'I': return Value(1);
-//        case 'D': return Value(0.1);
-//        default: return Value("");
-//    }
-////}
-//
-//////concept Numeric = std::integral<T> || std::floating_point<T>;
-
-
-
-
-
-
-//for (int i = 0; i < size; ++i) {
-//    bool isUnique = true;
-//
-//    for (int j = 0; j < i; ++j) {
-//        if (arr[i] == arr[j]) {
-//            isUnique = false;
-//            break;
-//        }
-//    }
-//
-//
-//    if (isUnique)
-//        uniqueCount++;
-//
-//}
